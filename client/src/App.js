@@ -48,9 +48,8 @@ import UpdteWorkLog from "./Components/Pages/UpdateWorkLog";
 import AuditorPayment from "./Components/Pages/AuditorPayment";
 import PaymentRequestTable from "./Components/Pages/PaymentRequestTable";
 import AllPaymentRequest from "./Components/Pages/AllPaymentRequest";
-import WorkLog2 from "./Components/Pages/test";
-
-
+import WorkLogCalendarAuditor from "./Components/Pages/WorkLogCalendarAuditor";
+import AdminWorkLogCalendar from "./Components/Pages/AdminWorkLogCalendar";
 
 import {
   AccountAdminRoute,
@@ -62,7 +61,6 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/arun" element={<WorkLog2 />} />
         <Route path="/" element={<LoginPage />} />
         <Route path="/emp-form" element={<EmployeeWorkForm />} />
 
@@ -134,12 +132,10 @@ function App() {
           <Route path="/payment-request" element={<PaymentRequestTable />} />
           <Route path="/all-payment" element={<AllPaymentRequest />} />
 
-
           <Route
             path="/submittedForApproval"
             element={<SubmittedForApproval />}
           />
-
 
           {/* Nested Routes for Audits - Avoid Repeating Main Route Segment */}
 
@@ -150,10 +146,18 @@ function App() {
           />
           <Route path="/work-log-table" element={<WorkLogTable />} />
           <Route path="/work-log/:date" element={<WorkLogTable />} />
-          <Route path = "/WorkLog2" element = {<WorkLog2 />} />
+          <Route path="/WorkLog2" element={<WorkLogCalendarAuditor />} />
           <Route path="/auditor-payment" element={<AuditorPayment />} />
-          <Route path="/admin-work-log" element={<AdminWorkLogTable />} />
+          <Route
+            path="/admin-work-log/:fromDate?/:toDate?"
+            element={<AdminWorkLogTable />}
+          />
+
           <Route path="/update-work-log" element={<UpdteWorkLog />} />
+          <Route
+            path="/admin-work-log-calendar"
+            element={<AdminWorkLogCalendar />}
+          />
           <Route
             path="/assigned-audit/audit-form/audit-report"
             element={<AuditReport />}

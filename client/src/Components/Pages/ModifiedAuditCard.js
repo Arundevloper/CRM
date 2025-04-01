@@ -205,7 +205,7 @@ const AuditDetails = () => {
                       fboName={audit.fbo_name}
                       outletName={audit.outlet_name}
                       location={audit.location}
-                      date={new Date(audit.started_at).toLocaleDateString()}
+                      date={new Date(audit.assigned_date).toLocaleDateString("en-GB")}
                       proposalNumber={audit.proposal_number}
                       auditNumber={audit.audit_number}
                       id={audit._id}

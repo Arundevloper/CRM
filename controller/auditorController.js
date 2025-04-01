@@ -365,18 +365,17 @@ export const getAudits = async (req, res) => {
     const { status, userId, searchQuery, page = 1, perPage = 10 } = req.query;
 
     // Parse page and perPage to integers
-    const pageNum = parseInt(page, 10) || 1; // Default to page 1 if invalid
-    const perPageNum = parseInt(perPage, 10) || 10; // Default to 10 items per page if invalid
+    const pageNum = parseInt(page, 10) || 1;
+    const perPageNum = parseInt(perPage, 10) || 10;
 
     // Build the query dynamically based on provided parameters
     const query = {};
+    if (status) query.status = status;
+    if (userId) query.user = userId;
 
-    if (status) query.status = status; // Filter by status if provided
-    if (userId) query.user = userId; // Filter by user ID if provided
-
-    // Search functionality: If a searchQuery is provided, filter based on relevant fields
+    // Search functionality
     if (searchQuery) {
-      const regex = new RegExp(searchQuery, "i"); // Case-insensitive search
+      const regex = new RegExp(searchQuery, "i");
       query.$or = [
         { outlet_name: { $regex: regex } },
         { fbo_name: { $regex: regex } },
@@ -388,23 +387,22 @@ export const getAudits = async (req, res) => {
     // Calculate pagination skip value
     const skip = (pageNum - 1) * perPageNum;
 
-    // Fetch audits matching the query with pagination
+    // Fetch audits with sorting (newest first)
     const audits = await AuditManagement.find(query)
-      .skip(skip) // Skip to the page
-      .limit(perPageNum) // Limit the number of records returned
-      .populate("user", "userName") // Populate user field with userName from User model
-      .populate("proposalId", "proposal_number"); // Populate proposalId field with proposal_number from Proposal model
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .skip(skip)
+      .limit(perPageNum)
+      .populate("user", "userName")
+      .populate("proposalId", "proposal_number");
 
-    // Get the total count of matching audits for pagination
+    // Get total count for pagination
     const totalCount = await AuditManagement.countDocuments(query);
 
-    // Map the audits to return the necessary data (userName, proposal_number, and all audit data)
+    // Map response data
     const response = audits.map((audit) => ({
       _id: audit._id,
-      userName: audit.user ? audit.user.userName : null, // Add userName from populated user
-      proposal_number: audit.proposalId
-        ? audit.proposalId.proposal_number
-        : null, // Add proposal_number from populated proposalId
+      userName: audit.user ? audit.user.userName : null,
+      proposal_number:audit.proposal_number,
       outletId: audit.outletId,
       fbo_name: audit.fbo_name,
       outlet_name: audit.outlet_name,
@@ -412,6 +410,7 @@ export const getAudits = async (req, res) => {
       started_at: audit.started_at,
       location: audit.location,
       audit_number: audit.audit_number,
+      assigned_date: audit.assigned_date,
       status_changed_at: audit.status_changed_at,
       customer_type: audit.customer_type,
       createdAt: audit.createdAt,
@@ -421,10 +420,10 @@ export const getAudits = async (req, res) => {
       __v: audit.__v,
     }));
 
-    // Calculate the total number of pages
+    // Calculate total pages
     const totalPages = Math.ceil(totalCount / perPageNum);
 
-    // Respond with the filtered audits and pagination data
+    // Send response
     res.status(200).json({
       success: true,
       message: "Audits retrieved successfully.",
@@ -437,7 +436,6 @@ export const getAudits = async (req, res) => {
       },
     });
   } catch (error) {
-    // Handle errors
     res.status(500).json({
       success: false,
       message: "Failed to retrieve audits.",
@@ -471,9 +469,25 @@ export const getAuditById = async (req, res) => {
       });
     }
 
+       // Process statusHistory to populate userName for "modified" status entries
+       const statusHistory = await Promise.all(
+        (audit.statusHistory || []).map(async (statusEntry) => {
+          if (statusEntry.status === "modified" && statusEntry.userId) {
+            const user = await User.findById(statusEntry.userId).select("userName");
+            return {
+              ...statusEntry.toObject(),
+              userName: user ? user.userName : null,
+            };
+          }
+          return statusEntry.toObject();
+        })
+      );
+
     // Format the response using moment for all date fields
     const formatDateTime = (date) =>
       date ? moment(date).format("DD-MM-YYYY HH:mm:ss") : null;
+
+    
 
     const response = {
       userName: audit.user ? audit.user.userName : null, // Add userName from populated user
@@ -490,7 +504,7 @@ export const getAuditById = async (req, res) => {
       proposal_number: audit.proposal_number,
       audit_comments: audit.audit_comments, // Include the new field here
       status_changed_at: formatDateTime(audit.status_changed_at), // Format status_changed_at
-      statusHistory: audit.statusHistory || null,
+      statusHistory,
       modificationHistory: audit.modificationHistory || null,
       fssai_image_url: audit.fssai_image_url ? audit.fssai_image_url : null,
       fssai_number: audit.fssai_number ? audit.fssai_number : null,
@@ -499,7 +513,7 @@ export const getAuditById = async (req, res) => {
       stepsStatus: audit.stepsStatus || null,
       physical_date: audit.physical_date || null,
       service: audit.service,
-      checkListId:audit.checklistCategory || null,
+      checkListId: audit.checklistCategory || null,
       vertical_of_industry: audit.vertical_of_industry,
       __v: audit.__v,
     };
@@ -553,7 +567,8 @@ export const updateAuditById = async (req, res) => {
     if (updates.audit_number) audit.audit_number = updates.audit_number;
     if (updates.user) audit.user = updates.user;
     if (updates.physical_date) audit.physical_date = updates.physical_date;
-    if (updates.vertical_of_industry) audit.vertical_of_industry = updates.vertical_of_industry;
+    if (updates.vertical_of_industry)
+      audit.vertical_of_industry = updates.vertical_of_industry;
 
     // Optionally add to modification history
     audit.modificationHistory = audit.modificationHistory || [];

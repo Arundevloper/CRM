@@ -22,6 +22,7 @@ const ChecklistModal = ({ visible, onClose, service, vertical_of_industry }) => 
     }
   }, [visible]);
 
+  console.log("Vertical of Industry:", vertical_of_industry);
   useEffect(() => {
     if (service === 'TPA' && vertical_of_industry) {
       const matchedCategory = categories.find(category => category.name === vertical_of_industry);

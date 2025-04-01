@@ -24,9 +24,9 @@ import AdminDashboard from "../Layout/AdminDashboard";
 import WorkLogForm from "./WorkLogForm";
 import { useAuth } from "../Context/AuthContext";
 import UpdateWorkLog from "./UpdateWorkLog";
+import { useParams } from "react-router-dom";
 
 const { confirm } = Modal;
-
 
 // Debounce function definition
 const debounce = (func, delay) => {
@@ -69,17 +69,21 @@ const AdminWorkLogTable = () => {
   const [intialLoading, setIntialLoading] = useState(true);
   const [selectedAuditor, setSelectedAuditor] = useState("none");
   const { user } = useAuth();
+  const { toDate, fromDate } = useParams();
 
   // Fetch data function
   const fetchData = useCallback(() => {
     setLoading(true);
+  
     axios
       .get("/api/worklogs/getAllWorkLogs", {
         params: {
           page: tableParams.pagination.current,
           pageSize: tableParams.pagination.pageSize,
           sort: sortData,
-          userId: selectedAuditor !== "none" ? selectedAuditor : undefined, // Include userId when an auditor is selected
+          userId: selectedAuditor !== "none" ? selectedAuditor : undefined,
+          fromDate, // Ensure these are correctly used
+          toDate // Check API expectations
         },
       })
       .then((response) => {
@@ -104,12 +108,18 @@ const AdminWorkLogTable = () => {
         setLoading(false);
       });
   }, [
-    selectedAuditor, // Add selectedAuditor as a dependency
+    selectedAuditor !== "none" ? selectedAuditor : undefined, // Prevent unnecessary calls
     tableParams.pagination.current,
     tableParams.pagination.pageSize,
     sortData,
+    fromDate, // Add missing dependencies
+    toDate, // Add missing dependencies (ensure correct key name)
   ]);
   
+  useEffect(() => {
+    // Scroll to the top of the page whenever this component is rendered
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     const checkWorkLogExist = async () => {
@@ -178,7 +188,6 @@ const AdminWorkLogTable = () => {
       setShouldFetch(false);
     }
   }, [shouldFetch, fetchData]);
-  
 
   // Pagination
   const handleTableChange = (pagination, filters, sorter) => {
@@ -196,15 +205,14 @@ const AdminWorkLogTable = () => {
   const handleAuditorChange = (value) => {
     setSelectedAuditor(value);
     const userId = value !== "none" ? value : null;
-  
+
     setTableParams((prevState) => ({
       ...prevState,
       pagination: { ...prevState.pagination, current: 1 }, // Reset to first page
     }));
-  
+
     setShouldFetch(true); // Trigger data fetch
   };
-  
 
   const showUpdateModal = (id) => {
     setUserId(id);
@@ -425,18 +433,6 @@ const AdminWorkLogTable = () => {
       title: "End Time",
       dataIndex: "endTime",
       key: "endTime",
-    },
-    {
-      title: "Sick Leave",
-      dataIndex: "sickLeave",
-      key: "sickLeave",
-      render: (sickLeave) => (sickLeave ? "Yes" : "No"), // Assuming sickLeave is a boolean
-    },
-    {
-      title: "Paid Leave",
-      dataIndex: "paidLeave",
-      key: "paidLeave",
-      render: (paidLeave) => (paidLeave ? "Yes" : "No"), // Assuming paidLeave is a boolean
     },
     {
       title: "Total Hours",

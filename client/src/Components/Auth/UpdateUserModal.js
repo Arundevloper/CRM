@@ -101,6 +101,7 @@ const UpdateUserModal = ({ visible, onCancel, userId }) => {
             <Option value="SUPER_ADMIN">Super Admin</Option>
             <Option value="ACCOUNT_ADMIN">Account Admin</Option>
             <Option value="AUDIT_ADMIN">Audit Admin</Option>
+            <Option value="AUDITOR">Auditor</Option>
           </Select>
         </Form.Item>
         <Form.Item>

@@ -9,7 +9,7 @@ import axios from "axios";
 
 const { Title } = Typography;
 
-const WorkLog = () => {
+const WorkLogCalendarAuditor = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [workLogDates, setWorkLogDates] = useState([]);
@@ -74,7 +74,7 @@ const WorkLog = () => {
       <div className="top-0 z-50 bg-white">
         <div className="mb-10 border shadow-bottom px-4 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold flex items-center">
-            Work Log Management
+            Auditor Work Log Calendar
           </h2>
           <Button type="primary" onClick={goToToday}>
             Today
@@ -86,7 +86,7 @@ const WorkLog = () => {
       <div className="flex justify-center py-4">
         <Card className="p-8 shadow-lg w-[80%] rounded-lg">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <CalendarOutlined className="mr-2 text-lg text-blue-500" /> Work Log
+            <CalendarOutlined className="mr-2 text-lg text-blue-500" />
             Calendar
           </h3>
           <Calendar
@@ -103,4 +103,4 @@ const WorkLog = () => {
   );
 };
 
-export default WorkLog;
+export default WorkLogCalendarAuditor;

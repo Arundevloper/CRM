@@ -75,7 +75,7 @@ const PaymentRequestTable = () => {
   const [showSendMailModal, setShowSendMailModal] = useState(false);
   const [auditorPaynmentId, setAuditorPaymentId] = useState(null);
   const [UpdateProposal, setUpdateProposal] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState("pending");
+  const [selectedStatus, setSelectedStatus] = useState();
   const { user } = useAuth();
 
   const navigate = useNavigate();
@@ -404,15 +404,22 @@ const PaymentRequestTable = () => {
       key: "verify_payment",
       render: (_, record) => (
         <Button
-          className="bg-blue-500 text-white hover:bg-blue-700"
+          className={
+            record.status === "accepted" || record.status === "rejected"
+              ? "bg-yellow-500 text-white hover:bg-yellow-600"
+              : "bg-blue-500 text-white hover:bg-blue-600"
+          }
           onClick={() =>
             handleRecordPayment(record._id, record.auditor_paymentId)
           }
         >
-          Verify
+          {record.status === "accepted" || record.status === "rejected"
+            ? "View/Edit"
+            : "Verify"}
         </Button>
       ),
     },
+
     {
       title: "Action",
       key: "action",
@@ -485,18 +492,18 @@ const PaymentRequestTable = () => {
                   <h2 className="text-xl font-semibold">Filters</h2>
                 </div>
                 <div className="ml-5">
-                  {/* Status Select */}
+                  {/* Status Multi-Select */}
                   <Select
+                    mode="multiple"
                     placeholder="Select Status"
                     options={[
                       { value: "pending", label: "Pending" },
                       { value: "accepted", label: "Accepted" },
                       { value: "rejected", label: "Rejected" },
-                      
                     ]}
-                    value={selectedStatus }
+                    value={selectedStatus}
                     onChange={handleFilterChange}
-                    style={{ width: 200 }}
+                    style={{ width: 300 }}
                   />
                 </div>
               </>

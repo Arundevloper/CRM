@@ -583,7 +583,7 @@ export const getAllProposalDetailsAdmin = async (req, res) => {
     console.log("Request body:", req.body);
 
     // Step 1: Extract query parameters
-    const { page = 1, pageSize = 10, sort, status = "pending" } = req.query;
+    const { page = 1, pageSize = 10, sort, status } = req.query;
 
     const pageNumber = parseInt(page, 10);
     const sizePerPage = parseInt(pageSize, 10);
@@ -597,8 +597,16 @@ export const getAllProposalDetailsAdmin = async (req, res) => {
     if (sort === "newproposal") sortQuery = { createdAt: -1 };
     else if (sort === "alllist") sortQuery = { createdAt: 1 };
 
-    // Step 3: Fetch auditor payments with status filter & pagination
-    const auditorPayments = await AuditorPayment.find({ status })
+    // Step 3: Create filter query dynamically
+    let filterQuery = {};
+
+    if (status) {
+      const statusArray = Array.isArray(status) ? status : status.split(",");
+      filterQuery.status = { $in: statusArray };
+    }
+
+    // Fetch auditor payments with status filter & pagination
+    const auditorPayments = await AuditorPayment.find(filterQuery)
       .populate({
         path: "auditorId",
         model: User,
@@ -667,7 +675,7 @@ export const getAllProposalDetailsAdmin = async (req, res) => {
     );
 
     // Step 5: Get total count for pagination
-    const totalCount = await AuditorPayment.countDocuments({ status });
+    const totalCount = await AuditorPayment.countDocuments(filterQuery);
 
     res.json({
       total: totalCount,
@@ -679,6 +687,7 @@ export const getAllProposalDetailsAdmin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 export const deleteFields = async (req, res) => {

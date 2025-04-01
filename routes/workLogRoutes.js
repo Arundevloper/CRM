@@ -17,10 +17,10 @@ const router = express.Router();
 router.post("/createWorkLog", createWorkLog);
 
 // Route to update an existing work log by ID (protected)
-router.put("/updateWorkLog/:id", updateWorkLog);
+router.put("/updateWorkLog/:id",verifyToken, updateWorkLog);
 
 // Route to delete a work log by ID (protected)
-router.delete("/deleteFields", deleteWorkLogs);
+router.delete("/deleteFields",verifyToken, deleteWorkLogs);
 
 router.get("/getAllWorkLogsByUser", getAllWorkLogsByUser);
 
@@ -30,7 +30,7 @@ router.get("/isWorkLogAlreadyExist",isWorkLogAlreadyExist);
 
 router.get("/getWorkLogById/:workLogId",getWorkLogById);
 
-router.put("/updateWorkLogById/:id",updateWorkLog);
+router.put("/updateWorkLogById/:id",verifyToken,updateWorkLog);
 
 router.get("/fetchWorkLogDates/:userId",fetchWorkLogDates)
 

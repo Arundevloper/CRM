@@ -572,6 +572,7 @@ export const getParticularOutletDetails = async (req, res) => {
       unit: outlet.unit,
       no_of_production_line: outlet.no_of_production_line,
       gst_number: outlet.gst_number,
+      vertical_of_industry:outlet.vertical_of_industry,
     };
 
     return res.status(200).json(response);

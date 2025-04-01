@@ -15,7 +15,12 @@ import { UploadOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { useAuth } from "../Context/AuthContext";
 
-const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPaymentId }) => {
+const PaymentConfirmationModal = ({
+  visible,
+  handleCancel,
+  proposalId,
+  auditorPaymentId,
+}) => {
   const [form] = Form.useForm();
   const { user } = useAuth();
   const [fileList, setFileList] = useState([]);
@@ -70,7 +75,8 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
   };
 
   const handlePreview = (file) => {
-    const isPDF = file.type === "application/pdf" || file.name?.endsWith(".pdf");
+    const isPDF =
+      file.type === "application/pdf" || file.name?.endsWith(".pdf");
 
     if (isPDF) {
       let pdfUrl = file.url || URL.createObjectURL(file.originFileObj);
@@ -91,11 +97,11 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
       message.error("Auditor Payment ID is missing for updating.");
       return;
     }
-  
+
     try {
       const values = await form.validateFields();
       const formData = new FormData();
-  
+
       formData.append("auditor_name", values.auditor_name);
       formData.append("amountReceived", values.amountReceived);
       formData.append("referenceNumber", values.referenceNumber);
@@ -103,17 +109,20 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
       formData.append("proposalId", proposalId);
       formData.append("auditor_id", user._id);
       formData.append("paymentId", auditorPaymentId);
-  
+
       if (fileList.length > 0) {
         formData.append("referenceDocument", fileList[0].originFileObj);
       }
-  
-      console.log("Updating with Form Data:", Object.fromEntries(formData.entries()));
-  
+
+      console.log(
+        "Updating with Form Data:",
+        Object.fromEntries(formData.entries())
+      );
+
       await axios.put("/api/payment/updateAuditorPayment", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-  
+
       message.success("Payment details updated successfully");
       form.resetFields();
       setFileList([]);
@@ -124,9 +133,6 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
       message.error("Failed to update payment details");
     }
   };
-  
-  
-  
 
   const handleConfirm = async (status) => {
     try {
@@ -134,7 +140,11 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
         status,
       });
 
-      message.success(`Payment ${status === "accepted" ? "accepted" : "rejected"} successfully`);
+      message.success(
+        `Payment ${
+          status === "accepted" ? "accepted" : "rejected"
+        } successfully`
+      );
       handleCancel();
     } catch (error) {
       message.error(`Failed to ${status} payment`);
@@ -186,10 +196,10 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
           </Row>
           <Form.Item label="Reference Document (PDF/Image)">
             <Upload
-              beforeUpload={() => false}
+              beforeUpload={() => false} // Prevent automatic upload
               listType="picture"
               fileList={fileList}
-              onChange={({ fileList }) => setFileList(fileList)}
+              onChange={({ fileList }) => setFileList(fileList.slice(-1))} // Keep only the latest file
               onPreview={handlePreview}
               readOnly={!isEditing}
             >
@@ -202,14 +212,22 @@ const PaymentConfirmationModal = ({ visible, handleCancel, proposalId,auditorPay
             onCancel={() => setPreviewVisible(false)}
           >
             {previewFile && (
-              <Image src={previewFile} alt="Preview" style={{ width: "100%" }} />
+              <Image
+                src={previewFile}
+                alt="Preview"
+                style={{ width: "100%" }}
+              />
             )}
           </Modal>
         </Form>
 
         {/* Accept & Reject Buttons */}
         <div className="flex justify-between mt-4">
-          <Button type="primary" danger onClick={() => handleConfirm("rejected")}>
+          <Button
+            type="primary"
+            danger
+            onClick={() => handleConfirm("rejected")}
+          >
             Reject
           </Button>
           <Button type="primary" onClick={() => handleConfirm("accepted")}>

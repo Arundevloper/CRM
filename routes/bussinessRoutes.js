@@ -55,7 +55,7 @@ router.get(
 );
 
 // Route to fetch business details by ID
-router.get("/getBusinessDataById/:id",  getBusinessDetailsById);
+router.get("/getBusinessDataById/:id", getBusinessDetailsById);
 
 // Route to delete Business details
 router.delete("/deleteSelectedFields", verifyToken, deleteFields);
@@ -81,7 +81,7 @@ router.get("/getOutletDetails/:businessId", verifyToken, getOutletDetailsById);
 // Route to get particular outlet details
 router.get(
   "/getParticularOutletDetails/:id",
-  verifyToken,
+
   getParticularOutletDetails
 );
 

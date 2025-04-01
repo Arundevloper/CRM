@@ -282,51 +282,9 @@ const PaymentRequestTable = () => {
     });
   };
 
-  // Handle Menu
-  const handleMenuClick = (record, { key }) => {
-    switch (key) {
-      case "generate_agreement":
-        showModalAgreement(record._id);
-        break;
+ 
+  
 
-      case "send_mail":
-        showSendMail(record._id);
-        break;
-
-      case "generate_invoice":
-        showModalInvoice(record._id);
-        break;
-
-      case "delete":
-        showSingleDeleteConfirm(record.auditor_paymentId);
-        break;
-
-      case "view":
-        navigate(`/proposal/view-proposal/${record._id}`);
-        break;
-
-      default:
-        break;
-    }
-  };
-
-  const menu = (record) => (
-    <Menu
-      onClick={(e) => handleMenuClick(record, e)}
-      style={{ padding: "8px" }}
-    >
-        <Menu.Item
-              key="delete"
-              style={{ margin: "8px 0", backgroundColor: "#FFCDD2" }}
-            >
-              <span
-                style={{ color: "#B71C1C", fontWeight: "bold", fontSize: "12px" }}
-              >
-                <DeleteOutlined /> Delete
-              </span>
-            </Menu.Item>
-    </Menu>
-  );
 
   const columns = [
   
@@ -363,21 +321,7 @@ const PaymentRequestTable = () => {
     },
    
     
-    {
-      title: "Action",
-      key: "action",
-      render: (_, record) => (
-        <Dropdown
-          overlay={menu(record)}
-          trigger={["click"]}
-          placement="bottomLeft"
-          arrow
-          danger
-        >
-          <Button type="link" icon={<MoreOutlined />} />
-        </Dropdown>
-      ),
-    },
+   
   ];
 
   // Fetch data when shouldFetch changes
@@ -430,14 +374,7 @@ const PaymentRequestTable = () => {
           <h2 className="text-xl font-semibold">Proposal Table With the Payment Received</h2>
           <div className="space-x-2">
             <Space wrap>
-              <Button
-                onClick={showDeleteConfirm}
-                icon={<DeleteOutlined />}
-                disabled={selectedRowKeys.length === 0}
-                shape="round"
-              >
-                Delete
-              </Button> 
+            
             </Space>
             {/* <Button shape="round" icon={<FilterOutlined />} size="default">
               Filters
@@ -528,10 +465,7 @@ const PaymentRequestTable = () => {
             }}
           >
             <Table
-              rowSelection={{
-                type: selectionType,
-                ...rowSelection,
-              }}
+             
               columns={columns}
               dataSource={flattenedTableData}
               rowKey={(record) => record.key}

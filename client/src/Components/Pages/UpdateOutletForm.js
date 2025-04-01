@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Form, Input, Button, message, Spin, Select } from "antd";
 import axios from "axios";
-import "../css/outletForm.css"; // Import the custom CSS
+import "../css/outletForm.css";
 
 const { Option } = Select;
 
@@ -13,9 +13,9 @@ const UpdateOutletForm = ({
   businessId,
 }) => {
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(true); // State to handle loading
-  const [isEditMode, setIsEditMode] = useState(false); // State to manage edit mode
-  const [industryType, setIndustryType] = useState(null); // State to track selected industry type
+  const [loading, setLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [industryType, setIndustryType] = useState(null);
 
   const fetchOutletDetails = useCallback(async () => {
     try {
@@ -34,6 +34,7 @@ const UpdateOutletForm = ({
         type_of_industry: outlet.type_of_industry,
         unit: outlet.unit,
         no_of_production_line: outlet.no_of_production_line,
+        vertical_of_industry: outlet.vertical_of_industry,
       });
 
       // Initialize industryType based on the fetched data
@@ -253,7 +254,38 @@ const UpdateOutletForm = ({
               ) : null}
             </>
           )}
-
+          <Form.Item
+            name="vertical_of_industry"
+            label={
+              <span className="text-gray-600 font-semibold">
+                Vertical of Industry
+              </span>
+            }
+          >
+            <Select
+              placeholder="Select Industry Vertical"
+              size={"large"}
+              disabled={!isEditMode}
+            >
+              <Option value="Sweet Shop">Sweet Shop</Option>
+              <Option value="Meat Retail">Meat Retail</Option>
+              <Option value="Hub">Hub</Option>
+              <Option value="Market">Market</Option>
+              <Option value="General Manufacturing">
+                General Manufacturing
+              </Option>
+              <Option value="Meat & Meat Processing">
+                Meat & Meat Processing
+              </Option>
+              <Option value="Dairy Processing">Dairy Processing</Option>
+              <Option value="Catering">Catering</Option>
+              <Option value="Transportation">Transportation</Option>
+              <Option value="Storage/Warehouse">Storage/Warehouse</Option>
+              <Option value="Institute Canteen">Institute Canteen</Option>
+              <Option value="Industrial Canteen">Industrial Canteen</Option>
+              <Option value="Temple Kitchen">Temple Kitchen</Option>
+            </Select>
+          </Form.Item>
           <Form.Item
             label={
               <span className="text-gray-600 font-semibold">GST Number</span>
@@ -261,14 +293,12 @@ const UpdateOutletForm = ({
             name="gst_number"
             rules={[
               {
-               
                 message: "Please enter GST number",
               },
               {
                 pattern: /^[A-Za-z0-9]{15}$/,
                 message: "GST number must be 15 alphanumeric characters",
               },
-            
             ]}
           >
             <Input

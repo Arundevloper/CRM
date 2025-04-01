@@ -27,7 +27,6 @@ import { useParams } from "react-router-dom"; // Import useParams from react-rou
 
 const { confirm } = Modal;
 
-
 // Debounce function definition
 const debounce = (func, delay) => {
   let timeoutId;
@@ -68,8 +67,6 @@ const WorkLogTable = () => {
   const { user } = useAuth();
   const { date } = useParams();
 
-  
-
   // Fetch data function
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -81,8 +78,8 @@ const WorkLogTable = () => {
           page: tableParams.pagination.current,
           pageSize: tableParams.pagination.pageSize,
           sort: sortData,
-          date
-         // No need for template literals if it's already a string
+          date,
+          // No need for template literals if it's already a string
         },
       })
       .then((response) => {
@@ -119,6 +116,10 @@ const WorkLogTable = () => {
     searchKeyword,
   ]);
 
+  useEffect(() => {
+    // Scroll to the top of the page whenever this component is rendered
+    window.scrollTo(0, 0);
+  }, []);
   useEffect(() => {
     const checkWorkLogExist = async () => {
       try {
@@ -181,15 +182,12 @@ const WorkLogTable = () => {
     }
   };
 
- 
-
   const handleSuccess = () => {
     fetchData();
     setIsModalOpen(false);
   };
 
   const showUpdateModal = (id) => {
- 
     setUserId(id);
     setIsUpdateModalVisible(true);
   };
@@ -204,7 +202,7 @@ const WorkLogTable = () => {
     setIsModalVisible(false);
   };
   const handleWorkLogCancel = () => {
-   // message.success("Edit Work Log");
+    // message.success("Edit Work Log");
     fetchData();
     setIsUpdateModalVisible(false);
   };
@@ -227,7 +225,7 @@ const WorkLogTable = () => {
       cancelText: "No",
       onOk() {
         axios
-          .delete("/api/auth/deleteFields", { data: selectedRows })
+          .delete("/api/worklogs/deleteFields", { data: selectedRows })
           .then((response) => {
             const currentPage = tableParams.pagination.current;
             const pageSize = tableParams.pagination.pageSize;
@@ -270,7 +268,7 @@ const WorkLogTable = () => {
       cancelText: "No",
       onOk() {
         axios
-          .delete("/api/auth/deleteFields", { data: [id] }) // Send ID as an array
+          .delete("/api/worklogs/deleteFields", { data: [id] }) // Send ID as an array
           .then((response) => {
             const currentPage = tableParams.pagination.current;
             const pageSize = tableParams.pagination.pageSize;
@@ -343,8 +341,6 @@ const WorkLogTable = () => {
       </Menu.Item>
     </Menu>
   );
-
-
 
   useEffect(() => {
     if (searchKeyword.trim()) {
@@ -442,60 +438,63 @@ const WorkLogTable = () => {
       <AdminDashboard>
         <div className="bg-blue-50 m-6">
           <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">
+            <h2 className="text-xl font-semibold">
               Work Log Table for the Date:{" "}
               <span className="text-gray-600">
-              {date
-                ? (() => {
-                    const [day, month, year] = date.split("-");
-                    const parsedDate = new Date(`${year}-${month}-${day}`);
-                    return parsedDate.toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    });
+                {date
+                  ? (() => {
+                      const [day, month, year] = date.split("-");
+                      const parsedDate = new Date(`${year}-${month}-${day}`);
+                      return parsedDate.toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      });
                     })()
                   : "N/A"}
-                  </span>
-                </h2>
-                <div className="space-x-2">
-                  <Space wrap>
-                  <Button
-                    onClick={showDeleteConfirm}
-                    icon={<DeleteOutlined />}
-                    disabled={
+              </span>
+            </h2>
+            <div className="space-x-2">
+              <Space wrap>
+                <Button
+                  onClick={showDeleteConfirm}
+                  icon={<DeleteOutlined />}
+                  disabled={
                     selectedRowKeys.length === 0 ||
                     new Date().toLocaleDateString("en-US") !==
-                      new Date(date.split("-").reverse().join("-")).toLocaleDateString("en-US")
-                    }
-                    shape="round"
-                  >
-                    Delete
-                  </Button>
-                  </Space>
-
-                  <Button
-                  type="primary"
-                  shape="round"
-                  icon={<PlusOutlined />}
-                  size="default"
-                  onClick={() => setIsModalOpen(true)}
-                  disabled={
-                    
-                    new Date().toLocaleDateString("en-US") !==
-                    new Date(date.split("-").reverse().join("-")).toLocaleDateString("en-US")
+                      new Date(
+                        date.split("-").reverse().join("-")
+                      ).toLocaleDateString("en-US")
                   }
-                  >
-                  Add Work
-                  </Button>
-                </div>
-                </div>
+                  shape="round"
+                >
+                  Delete
+                </Button>
+              </Space>
 
-                <div className="flex justify-between my-4">
-                <ConfigProvider
-                  theme={{
-                  components: {
-                    Radio: {
+              <Button
+                type="primary"
+                shape="round"
+                icon={<PlusOutlined />}
+                size="default"
+                onClick={() => setIsModalOpen(true)}
+                disabled={
+                  new Date().toLocaleDateString("en-US") !==
+                  new Date(
+                    date.split("-").reverse().join("-")
+                  ).toLocaleDateString("en-US")
+                }
+              >
+                Add Work
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-between my-4">
+            <ConfigProvider
+              theme={{
+                components: {
+                  Radio: {
                     buttonBorderWidth: 0, // Remove border
                   },
                 },

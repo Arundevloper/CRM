@@ -2,7 +2,6 @@ import WorkLog from "../models/workLogModel.js";
 import moment from "moment";
 import mongoose from "mongoose";
 
-
 // Create Work Log
 export const createWorkLog = async (req, res) => {
   console.log(req.body);
@@ -24,7 +23,6 @@ export const createWorkLog = async (req, res) => {
         message: "userId, workType, startTime, and endTime are required",
       });
     }
-
 
     // Create a new work log entry
     const workLog = new WorkLog({
@@ -49,10 +47,11 @@ export const createWorkLog = async (req, res) => {
 
 // Update Work Log
 export const updateWorkLog = async (req, res) => {
+  console.log(req.body);
   try {
     const { id } = req.params;
     const updateData = req.body;
-    const { role } = req.user || {}; // Ensure req.user is defined before accessing role
+    const { role } = req.user || {};
 
     if (role === "AUDITOR") {
       const todayStart = moment().startOf("day");
@@ -79,8 +78,10 @@ export const updateWorkLog = async (req, res) => {
       updateData.reason = null;
       updateData.paidLeave = false;
       updateData.sickLeave = false;
-    } else if(currentWorkType !=="absent" && updateData.workType === "absent") {
-  
+    } else if (
+      currentWorkType !== "absent" &&
+      updateData.workType === "absent"
+    ) {
       // Reset startTime, endTime, and description if workType remains "Absent"
       updateData.startTime = null;
       updateData.endTime = null;
@@ -104,24 +105,40 @@ export const updateWorkLog = async (req, res) => {
 
 // Delete Work Log
 export const deleteWorkLogs = async (req, res) => {
+  console.log(req.body);
   try {
     const arrayOfWorkLogIds = req.body;
+    const { role } = req.user || {};
 
-    // Validate arrayOfWorkLogIds if necessary
-    if (!Array.isArray(arrayOfWorkLogIds)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input: Expected an array of WorkLog IDs" });
+    if (!Array.isArray(arrayOfWorkLogIds) || arrayOfWorkLogIds.length === 0) {
+      return res.status(400).json({ error: "Invalid input: Expected a non-empty array of WorkLog IDs" });
     }
 
-    // Perform deletions
-    const deletionPromises = arrayOfWorkLogIds.map(async (workLogId) => {
-      // Delete WorkLog document
-      await WorkLog.deleteOne({ _id: workLogId });
-    });
+    // Fetch work logs before deleting
+    const workLogs = await WorkLog.find({ _id: { $in: arrayOfWorkLogIds } });
 
-    // Wait for all deletion operations to complete
-    await Promise.all(deletionPromises);
+    if (!workLogs.length) {
+      return res.status(404).json({ message: "No matching work logs found" });
+    }
+
+    // Auditor restriction: Can only delete today's work logs
+    if (role === "AUDITOR") {
+      const todayStart = moment().startOf("day");
+      const todayEnd = moment().endOf("day");
+
+      const unauthorizedLogs = workLogs.some(
+        (log) => !moment(log.createdAt).isBetween(todayStart, todayEnd)
+      );
+
+      if (unauthorizedLogs) {
+        return res.status(403).json({
+          message: "Forbidden: Auditors can only delete work logs created today",
+        });
+      }
+    }
+
+    // Delete work logs in bulk
+    await WorkLog.deleteMany({ _id: { $in: arrayOfWorkLogIds } });
 
     res.status(200).json({ message: "WorkLogs deleted successfully" });
   } catch (err) {
@@ -129,6 +146,7 @@ export const deleteWorkLogs = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const getAllWorkLogsByUser = async (req, res) => {
   try {
@@ -253,32 +271,48 @@ export const isWorkLogAlreadyExist = async (req, res) => {
   }
 };
 
+
+
 export const getAllWorkLogs = async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, sort, userId } = req.query;
+    let { page = 1, pageSize = 10, sort, userId, fromDate, toDate } = req.query;
 
     const pageNumber = parseInt(page, 10);
     const sizePerPage = parseInt(pageSize, 10);
 
-    if (
-      isNaN(pageNumber) ||
-      pageNumber < 1 ||
-      isNaN(sizePerPage) ||
-      sizePerPage < 1
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid page or pageSize parameter" });
+    if (isNaN(pageNumber) || pageNumber < 1 || isNaN(sizePerPage) || sizePerPage < 1) {
+      return res.status(400).json({ message: "Invalid page or pageSize parameter" });
     }
 
     let query = {};
 
-    // Validate and apply user filtering
+    // User filter
     if (userId) {
       if (!mongoose.Types.ObjectId.isValid(userId)) {
         return res.status(400).json({ message: "Invalid userId" });
       }
       query.userId = userId;
+    }
+
+    // Date filtering logic
+    if (fromDate && !toDate) {
+      // If only `fromDate` is provided, fetch logs for that single day
+      query.createdAt = {
+        $gte: moment(fromDate, "YYYY-MM-DD").startOf("day").toDate(),
+        $lte: moment(fromDate, "YYYY-MM-DD").endOf("day").toDate(),
+      };
+    } else if (fromDate && toDate) {
+      // If both `fromDate` and `toDate` are provided, fetch logs in the range
+      query.createdAt = {
+        $gte: moment(fromDate, "YYYY-MM-DD").startOf("day").toDate(),
+        $lte: moment(toDate, "YYYY-MM-DD").endOf("day").toDate(),
+      };
+    } else {
+      // Default: Last 7 days if no dates are provided
+      query.createdAt = {
+        $gte: moment().subtract(7, "days").startOf("day").toDate(),
+        $lte: moment().endOf("day").toDate(),
+      };
     }
 
     let sortQuery = { createdAt: 1 }; // Default sorting (oldest first)
@@ -291,21 +325,15 @@ export const getAllWorkLogs = async (req, res) => {
       .skip((pageNumber - 1) * sizePerPage)
       .limit(sizePerPage)
       .populate("userId", "userName")
-      .select(
-        "workType description startTime endTime createdAt userId paidLeave sickLeave"
-      );
+      .select("workType description startTime endTime createdAt userId paidLeave sickLeave");
 
     const totalWorkLogs = await WorkLog.countDocuments(query);
-
-    console.log(workLogs);
 
     res.status(200).json({
       data: workLogs.map((log) => ({
         ...log.toObject(),
         auditor_name: log.userId?.userName || "N/A",
-        startTime: log.startTime
-          ? moment(log.startTime).format("HH:mm A")
-          : "N/A",
+        startTime: log.startTime ? moment(log.startTime).format("HH:mm A") : "N/A",
         endTime: log.endTime ? moment(log.endTime).format("HH:mm A") : "N/A",
         date: moment(log.createdAt).format("DD-MM-YYYY"),
         dateAndTime: moment(log.createdAt).format("DD-MM-YYYY HH:mm A"),
@@ -313,22 +341,23 @@ export const getAllWorkLogs = async (req, res) => {
         sickLeave: log.sickLeave,
         totalHours:
           log.startTime && log.endTime
-            ? moment
-                .duration(moment(log.endTime).diff(moment(log.startTime)))
-                .asHours()
-                .toFixed(2) + " Hours"
+            ? moment.duration(moment(log.endTime).diff(moment(log.startTime))).asHours().toFixed(2) + " Hours"
             : "N/A",
       })),
       total: totalWorkLogs,
       page: pageNumber,
       pageSize: sizePerPage,
       totalPages: Math.ceil(totalWorkLogs / sizePerPage),
+      fromDate: fromDate || moment().subtract(7, "days").format("YYYY-MM-DD"),
+      toDate: toDate || moment().format("YYYY-MM-DD"),
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 
 export const getWorkLogById = async (req, res) => {
   try {
@@ -364,7 +393,6 @@ export const getWorkLogById = async (req, res) => {
   }
 };
 
-
 export const fetchWorkLogDates = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -378,7 +406,9 @@ export const fetchWorkLogDates = async (req, res) => {
 
     // Extract and format unique dates from timestamps
     const workLogDates = [
-      ...new Set(workLogs.map((log) => moment(log.timestamp).format("YYYY-MM-DD")))
+      ...new Set(
+        workLogs.map((log) => moment(log.timestamp).format("YYYY-MM-DD"))
+      ),
     ];
 
     return res.json(workLogDates);

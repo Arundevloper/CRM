@@ -123,12 +123,27 @@ const AdminDashboard = ({ children }) => {
       link: "/dashboard",
       roles: ["SUPER_ADMIN", "ACCOUNT_ADMIN", "AUDIT_ADMIN", "AUDITOR"],
     },
+  
     {
-      label: "Work Log",
-      key: "/admin-work-log",
-      icon: <CarryOutOutlined />,
-      link: "/admin-work-log",
-      roles: [ "SUPER_ADMIN", "AUDIT_ADMIN"],
+      label: "Work Log Mangement",
+      key: "/work-log-mangement",
+      icon: <CreditCardOutlined />,
+      roles: ["SUPER_ADMIN", "ACCOUNT_ADMIN"],
+      children: [
+        {
+          label: "Leave Request",
+          key: "/leave-request",
+          link: "/leave-request",
+          roles: ["SUPER_ADMIN", "ACCOUNT_ADMIN"],
+        },
+        {
+          label: "Work Log",
+          key: "/admin-work-log-calendar",
+          icon: <CreditCardOutlined />,
+          link: "/admin-work-log-calendar",
+          roles: [ "SUPER_ADMIN", "AUDIT_ADMIN"],
+        },
+      ],
     },
     {
       label: "Customers",
@@ -232,17 +247,10 @@ const AdminDashboard = ({ children }) => {
       label: "Work Log",
       key: "/work-log",
       icon: <CarryOutOutlined />,
-      link: "/work-log-table",
+      link: "/WorkLog2",
       roles: [ "AUDITOR"],
     },
-    {
-      label: "Work Log 2",
-      key: "/work-log2",
-      icon: <CarryOutOutlined />,
-      link: "/work-log-table2",
-      roles: [ "AUDITOR"],
-    },
-
+   
     {
       label: "Payment  ",
       key: "/",
