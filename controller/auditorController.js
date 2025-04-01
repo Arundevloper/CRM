@@ -7,10 +7,22 @@ import Question from "../models/questionSchema.js";
 import Label from "../models/labelModel.js";
 import CheckListCategory from "../models/checkListCategoryModel.js";
 import AuditResponse from "../models/auditReponseModel.js";
+import fs from "fs";
+import path from "path";
+import { promisify } from "util";
+import { fileURLToPath } from "url";
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
 } from "../helper/uploadToCloudinary.js";
+
+const writeFile = promisify(fs.writeFile);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const baseUrl = process.env.BASE_URL || "http://localhost:5000";
+const uploadDir = "uploads/audit-images";
 
 // Create a new auditor
 export const createAuditor = async (req, res) => {
@@ -402,7 +414,7 @@ export const getAudits = async (req, res) => {
     const response = audits.map((audit) => ({
       _id: audit._id,
       userName: audit.user ? audit.user.userName : null,
-      proposal_number:audit.proposal_number,
+      proposal_number: audit.proposal_number,
       outletId: audit.outletId,
       fbo_name: audit.fbo_name,
       outlet_name: audit.outlet_name,
@@ -469,25 +481,25 @@ export const getAuditById = async (req, res) => {
       });
     }
 
-       // Process statusHistory to populate userName for "modified" status entries
-       const statusHistory = await Promise.all(
-        (audit.statusHistory || []).map(async (statusEntry) => {
-          if (statusEntry.status === "modified" && statusEntry.userId) {
-            const user = await User.findById(statusEntry.userId).select("userName");
-            return {
-              ...statusEntry.toObject(),
-              userName: user ? user.userName : null,
-            };
-          }
-          return statusEntry.toObject();
-        })
-      );
+    // Process statusHistory to populate userName for "modified" status entries
+    const statusHistory = await Promise.all(
+      (audit.statusHistory || []).map(async (statusEntry) => {
+        if (statusEntry.status === "modified" && statusEntry.userId) {
+          const user = await User.findById(statusEntry.userId).select(
+            "userName"
+          );
+          return {
+            ...statusEntry.toObject(),
+            userName: user ? user.userName : null,
+          };
+        }
+        return statusEntry.toObject();
+      })
+    );
 
     // Format the response using moment for all date fields
     const formatDateTime = (date) =>
       date ? moment(date).format("DD-MM-YYYY HH:mm:ss") : null;
-
-    
 
     const response = {
       userName: audit.user ? audit.user.userName : null, // Add userName from populated user
@@ -795,95 +807,6 @@ export const fetchLabelsWithQuestions = async (req, res) => {
   }
 };
 
-// Configure multer for file handling
-// const upload = multer({ dest: "uploads/" }); // Temp storage
-
-// export const saveAuditResponses = async (req, res) => {
-//   console.log(req.body);
-//   console.log(req.files);
-//   const { data, files } = req.body;
-
-//   try {
-//     const parsedData = JSON.parse(data); // Parse the JSON data for responses
-//     const { auditId, responses, status } = parsedData;
-
-//     // Save responses with file uploads
-//     const savedResponses = await Promise.all(
-//       responses.map(async (response) => {
-//         const { questionId, comment, marks, file } = response;
-
-//         let uploadedImageUrl = "";
-//         if (file) {
-//           // Find the corresponding file uploaded
-//           const uploadedFile = files.find((f) => f.originalname === file);
-//           if (uploadedFile) {
-//             try {
-//               // Upload to Cloudinary
-//               const uploadResult = await cloudinary.uploader.upload(
-//                 uploadedFile.path,
-//                 {
-//                   folder: "audit_images",
-//                 }
-//               );
-//               uploadedImageUrl = uploadResult.secure_url;
-
-//               // Optionally remove the temp file after upload
-//               fs.unlinkSync(uploadedFile.path);
-//             } catch (error) {
-//               console.error("Image upload failed:", error.message);
-//               throw new Error("Failed to upload image.");
-//             }
-//           }
-//         }
-
-//         // Save the audit response in DB
-//         const auditResponse = new AuditResponse({
-//           audit: auditId,
-//           question: questionId,
-//           comment,
-//           marks,
-//           image_url: uploadedImageUrl,
-//         });
-
-//         return auditResponse.save();
-//       })
-//     );
-
-//     // Call `updateStatusHistoryByAuditId` to update the status
-//     const audit = await AuditManagement.findById(auditId);
-
-//     if (!audit) {
-//       throw new Error("Audit not found.");
-//     }
-
-//     // Update the status and add status history
-//     audit.status = status; // Use the status from the request
-//     audit.statusHistory.push({
-//       status,
-//       changedAt: new Date(),
-//     });
-
-//     await audit.save(); // Save changes
-
-//     res.status(200).json({
-//       message: "Audit responses saved successfully, and status updated.",
-//       data: savedResponses,
-//     });
-//   } catch (error) {
-//     console.error("Error saving audit responses:", error.message);
-//     res.status(400).json({
-//       message: "Invalid request body or failed to process responses.",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// // Middleware for handling file uploads
-// export const handleFileUpload = upload.single("image"); // Expecting an `image` field
-
-// Configure Multer for file upload
-// Helper function for uploading files to Cloudinary
-
 export const saveAuditResponses = async (req, res) => {
   const { data } = req.body;
   const files = req.files;
@@ -895,27 +818,29 @@ export const saveAuditResponses = async (req, res) => {
   }
 
   try {
-    console.log("Files received:", files); // Debugging
+    console.log("Files received:", files);
 
     const parsedData = JSON.parse(data);
     const { auditId, responses, status, fssai_number, fssai_file } = parsedData;
 
     const uploadedFiles = {};
+    const uploadDir = path.join(__dirname, "../uploads/audit-images");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
 
-    // Upload all files to Cloudinary first and map them
     await Promise.all(
       files.map(async (file) => {
-        const uploadedResult = await uploadToCloudinary(
-          file.buffer,
-          "audit_files"
-        );
-        uploadedFiles[file.originalname] = uploadedResult.secure_url; // Map file names to their URLs
+        const filePath = path.join(uploadDir, file.originalname);
+        await writeFile(filePath, file.buffer);
+        uploadedFiles[
+          file.originalname
+        ] = `/uploads/audit-images/${file.originalname}`;
       })
     );
 
-    console.log("Uploaded files:", uploadedFiles); // Debugging
+    console.log("Uploaded files:", uploadedFiles);
 
-    // Save responses
     const savedResponses = await Promise.all(
       responses.map(async ({ questionId, comment, marks, file }) => {
         const uploadedImageUrl = file ? uploadedFiles[file] || "" : "";
@@ -932,7 +857,6 @@ export const saveAuditResponses = async (req, res) => {
       })
     );
 
-    // Update audit record
     const audit = await AuditManagement.findById(auditId);
     if (!audit) {
       throw new Error("Audit not found.");
@@ -963,25 +887,28 @@ export const saveAuditResponses = async (req, res) => {
 
 export const updateAuditResponses = async (req, res) => {
   try {
-    console.log(req.body); // Contains form data like 'data'
-    console.log(req.files); // Contains the uploaded files
-    req.files.forEach((file) => {
-      console.log(file); // Logs each file object
-    });
-    const { data } = req.body; // 'data' is the JSON part of the form
+    console.log("Received request body:", req.body);
+    console.log("Received files:", req.files);
+
+    const { data } = req.body;
     const files = req.files;
 
-    if (!data || !files) {
-      return res
-        .status(400)
-        .json({ message: "Missing required data or files." });
+    if (!data) {
+      return res.status(400).json({ message: "Missing required data." });
     }
 
-    // Parse `data`
-    const parsedData = JSON.parse(data);
+    let parsedData;
+    try {
+      parsedData = JSON.parse(data);
+    } catch (error) {
+      return res
+        .status(400)
+        .json({ message: "Invalid JSON format in request body." });
+    }
+
     const { auditId, responses } = parsedData;
 
-    if (!auditId || !responses) {
+    if (!auditId || !Array.isArray(responses)) {
       return res.status(400).json({ message: "Invalid request payload." });
     }
 
@@ -990,72 +917,62 @@ export const updateAuditResponses = async (req, res) => {
     for (const response of responses) {
       const { questionId, comment, selectedMark, file } = response;
 
-      // Search for the existing AuditResponse by both auditId and questionId
       const auditResponse = await AuditResponse.findOne({
         audit: auditId,
         question: questionId,
       });
 
       if (!auditResponse) {
-        return res.status(404).json({
-          message: `Audit response for auditId ${auditId} and questionId ${questionId} not found.`,
-        });
+        console.warn(
+          `Audit response not found for auditId ${auditId}, questionId ${questionId}`
+        );
+        continue;
       }
 
-      let uploadedImageUrl = auditResponse.image_url; // Use the existing image URL by default
+      let uploadedImageUrl = auditResponse.image_url;
 
-      // If file is provided and it's not a Cloudinary URL, upload it
-      if (file && !file.startsWith("https://res.cloudinary.com")) {
+      if (file && !file.startsWith("/uploads/audit-images/")) {
         const uploadedFile = files.find((f) => f.originalname === file);
         if (uploadedFile) {
-          console.log("Processing file:", uploadedFile);
-
+          console.log("Saving file locally:", uploadedFile.originalname);
+          const filePath = path.join(uploadDir, uploadedFile.originalname);
           try {
-            // Uploading file buffer to Cloudinary
-            const uploadResult = await uploadToCloudinary(
-              uploadedFile.buffer,
-              "audit_images"
-            );
-            uploadedImageUrl = uploadResult.secure_url;
-          } catch (error) {
+            await writeFileAsync(filePath, uploadedFile.buffer);
+            uploadedImageUrl = `${baseUrl}/${filePath.replace(/\\/g, "/")}`;
+          } catch (fileError) {
             console.error(
-              `Failed to upload image for questionId ${questionId}:`,
-              error.message
+              `Failed to save image for questionId ${questionId}:`,
+              fileError.message
             );
           }
         }
       }
 
-      // Only update fields that are provided in the request
       const updateFields = {
-        ...(comment && { comment }),
-        ...(selectedMark && { marks: selectedMark }),
+        ...(comment !== undefined && { comment }),
+        ...(selectedMark !== undefined && { marks: selectedMark }),
         ...(uploadedImageUrl && { image_url: uploadedImageUrl }),
       };
 
-      // Update the response in the AuditResponse collection
       await AuditResponse.updateOne(
         { audit: auditId, question: questionId },
         { $set: updateFields }
       );
 
-      // Store the updated response to return later
       updatedResponses.push({
         questionId,
-        comment: comment || auditResponse.comment, // If no new comment, keep existing
-        marks: selectedMark || auditResponse.marks, // If no new marks, keep existing
-        image_url: uploadedImageUrl || auditResponse.image_url, // If no new file URL, keep existing
+        comment: updateFields.comment || auditResponse.comment,
+        marks: updateFields.marks || auditResponse.marks,
+        image_url: updateFields.image_url || auditResponse.image_url,
       });
     }
 
-    // Send the response only once after all updates are completed
     return res.status(200).json({
-      message: "Audit responses and status updated successfully.",
+      message: "Audit responses updated successfully.",
       data: updatedResponses,
     });
   } catch (error) {
     console.error("Error processing audit responses:", error.message);
-    // Ensure only one response is sent
     if (!res.headersSent) {
       return res.status(500).json({
         message: "Failed to process responses.",
@@ -1067,23 +984,23 @@ export const updateAuditResponses = async (req, res) => {
 
 export const fetchingQuestionAnswer = async (req, res) => {
   try {
-    const { auditId } = req.params; // Extract auditId from request parameters
-
+    const { auditId } = req.params;
     const { checkListId } = req.query;
 
     if (!auditId) {
       return res.status(400).json({ message: "Audit ID is required" });
     }
 
-    //fetch all the label with the category id
+    // Define the base URL (Change this to your backend domain in production)
+    const baseUrl = process.env.BASE_URL || "http://localhost:5000";
+
+    // Fetch labels based on checklistCategory
     const labels = await Label.find({ checklistCategory: checkListId });
 
-    // Fetch associated questions for each label and map to the desired format
     const data = await Promise.all(
       labels.map(async (label) => {
         const questions = await Question.find({ label: label._id });
 
-        // Map questions and populate answers from AuditResponse
         const questionsWithAnswers = await Promise.all(
           questions.map(async (question, index) => {
             const auditResponse = await AuditResponse.findOne({
@@ -1095,15 +1012,19 @@ export const fetchingQuestionAnswer = async (req, res) => {
               questionId: question._id,
               description: `${index + 1}. ${question.question_text}`,
               mark: question.marks,
-              comment: auditResponse ? auditResponse.comment : "", // Populate comment if it exists
-              marks: auditResponse ? auditResponse.marks : "", // Populate marks if it exists
-              image_url: auditResponse ? auditResponse.image_url : "", // Populate image URL if it exists
+              comment: auditResponse?.comment || "",
+              marks: auditResponse?.marks || "",
+              image_url: auditResponse?.image_url
+                ? `${baseUrl}/uploads/audit-images/${path.basename(
+                    auditResponse.image_url
+                  )}`.replace(/\\/g, "/")
+                : "", // Construct absolute path
             };
           })
         );
 
         return {
-          title: label.name, // Use label name as the title
+          title: label.name,
           questions: questionsWithAnswers,
         };
       })
@@ -1112,13 +1033,12 @@ export const fetchingQuestionAnswer = async (req, res) => {
     res.status(200).json(data);
   } catch (error) {
     console.error(
-      "Error fetching labels with questions and audit responses:",
-      error
+      "Error fetching questions and audit responses:",
+      error.message
     );
-    res.status(500).json({
-      message: "Failed to fetch labels with questions and audit responses",
-      error,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch data", error: error.message });
   }
 };
 
@@ -1192,10 +1112,27 @@ export const deleteAuditById = async (req, res) => {
       return res.status(404).json({ message: "Audit not found" });
     }
 
-    // Delete all AuditResponse documents with the matching audit_id
-    const responseDeleteResult = await AuditResponse.deleteMany({
-      audit_id: id,
+    // Find all AuditResponse documents related to the audit
+    const auditResponses = await AuditResponse.find({ audit: id });
+
+    // Delete associated images from local storage
+    auditResponses.forEach((response) => {
+      if (
+        response.image_url &&
+        response.image_url.startsWith("/uploads/audit-images/")
+      ) {
+        const filePath = path.join(
+          "uploads/audit-images",
+          path.basename(response.image_url)
+        );
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath); // Delete the file
+        }
+      }
     });
+
+    // Delete all AuditResponse documents related to the audit
+    const responseDeleteResult = await AuditResponse.deleteMany({ audit: id });
 
     // Delete the AuditManagement document
     const auditDeleteResult = await AuditManagement.findByIdAndDelete(id);
